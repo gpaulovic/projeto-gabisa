@@ -1,47 +1,40 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
+# brinquedos/views.py
+from django.shortcuts import render, get_object_or_404
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 from .models import Brinquedo
-from .forms import BrinquedoForm
-from django.contrib.auth.decorators import login_required
+from .serializers import BrinquedoSerializer
 
-@login_required
-def listar_brinquedos(request):
-    brinquedos = Brinquedo.objects.all()
-    return render(request, 'brinquedos/listar_brinquedos.html', {'brinquedos': brinquedos})
+@api_view(['GET', 'POST'])
+def brinquedo_list(request):
+    if request.method == 'GET':
+        brinquedos = Brinquedo.objects.all()
+        serializer = BrinquedoSerializer(brinquedos, many=True)
+        return Response(serializer.data)
 
-@login_required
-def detalhes_brinquedo(request, brinquedo_id):
-    brinquedo = get_object_or_404(Brinquedo, pk=brinquedo_id)
-    return render(request, 'brinquedos/detalhes_brinquedo.html', {'brinquedo': brinquedo})
+    elif request.method == 'POST':
+        serializer = BrinquedoSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@login_required
-def criar_brinquedo(request):
-    if request.method == 'POST':
-        form = BrinquedoForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Brinquedo criado com sucesso.')
-            return redirect('brinquedos:listar_brinquedos')
-    else:
-        form = BrinquedoForm()
-    return render(request, 'brinquedos/criar_brinquedo.html', {'form': form})
+@api_view(['GET', 'PUT', 'DELETE'])
+def brinquedo_detail(request, pk):
+    brinquedo = get_object_or_404(Brinquedo, pk=pk)
 
-@login_required
-def editar_brinquedo(request, brinquedo_id):
-    brinquedo = get_object_or_404(Brinquedo, pk=brinquedo_id)
-    if request.method == 'POST':
-        form = BrinquedoForm(request.POST, instance=brinquedo)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Brinquedo editado com sucesso.')
-            return redirect('brinquedos:listar_brinquedos')
-    else:
-        form = BrinquedoForm(instance=brinquedo)
-    return render(request, 'brinquedos/editar_brinquedo.html', {'form': form, 'brinquedo': brinquedo})
+    if request.method == 'GET':
+        serializer = BrinquedoSerializer(brinquedo)
+        return Response(serializer.data)
 
-@login_required
-def excluir_brinquedo(request, brinquedo_id):
-    brinquedo = get_object_or_404(Brinquedo, pk=brinquedo_id)
-    brinquedo.delete()
-    messages.success(request, 'Brinquedo excluído com sucesso.')
-    return redirect('brinquedos:listar_brinquedos')
+    elif request.method == 'PUT':
+        serializer = BrinquedoSerializer(brinquedo, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        brinquedo.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

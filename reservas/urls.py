@@ -1,12 +1,10 @@
 from django.urls import path
-from .views import listar_reservas, detalhes_reserva, criar_reserva, editar_reserva, excluir_reserva
+from .views import reserva_list, reserva_detail
 
 app_name = 'reservas'
 
 urlpatterns = [
-    path('', listar_reservas, name='listar_reservas'),
-    path('<int:reserva_id>/', detalhes_reserva, name='detalhes_reserva'),
-    path('criar/', criar_reserva, name='criar_reserva'),
-    path('<int:reserva_id>/editar/', editar_reserva, name='editar_reserva'),
-    path('<int:reserva_id>/excluir/', excluir_reserva, name='excluir_reserva'),
+    path('api/reservas/', reserva_list, name='reserva_list'),
+    path('api/reservas/<int:pk>/', reserva_detail, name='reserva_detail'),
 ]
+

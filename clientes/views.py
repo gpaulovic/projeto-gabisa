@@ -1,47 +1,41 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
+# clientes/views.py
+from django.shortcuts import render
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 from .models import Cliente
-from .forms import ClienteForm
-from django.contrib.auth.decorators import login_required
+from .serializers import ClienteSerializer
 
-@login_required
-def listar_clientes(request):
-    clientes = Cliente.objects.all()
-    return render(request, 'clientes/listar_clientes.html', {'clientes': clientes})
+@api_view(['GET', 'POST'])
+def cliente_list(request):
+    if request.method == 'GET':
+        clientes = Cliente.objects.all()
+        serializer = ClienteSerializer(clientes, many=True)
+        return Response(serializer.data)
 
-@login_required
-def detalhes_cliente(request, cliente_id):
-    cliente = get_object_or_404(Cliente, pk=cliente_id)
-    return render(request, 'clientes/detalhes_cliente.html', {'cliente': cliente})
+    elif request.method == 'POST':
+        serializer = ClienteSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@login_required
-def criar_cliente(request):
-    if request.method == 'POST':
-        form = ClienteForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Cliente criado com sucesso.')
-            return redirect('clientes:listar_clientes')
-    else:
-        form = ClienteForm()
-    return render(request, 'clientes/criar_cliente.html', {'form': form})
 
-@login_required
-def editar_cliente(request, cliente_id):
-    cliente = get_object_or_404(Cliente, pk=cliente_id)
-    if request.method == 'POST':
-        form = ClienteForm(request.POST, instance=cliente)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Cliente editado com sucesso.')
-            return redirect('clientes:listar_clientes')
-    else:
-        form = ClienteForm(instance=cliente)
-    return render(request, 'clientes/editar_cliente.html', {'form': form, 'cliente': cliente})
+@api_view(['GET', 'PUT', 'DELETE'])
+def cliente_detail(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
 
-@login_required
-def excluir_cliente(request, cliente_id):
-    cliente = get_object_or_404(Cliente, pk=cliente_id)
-    cliente.delete()
-    messages.success(request, 'Cliente excluído com sucesso.')
-    return redirect('clientes:listar_clientes')
+    if request.method == 'GET':
+        serializer = ClienteSerializer(cliente)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = ClienteSerializer(cliente, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        cliente.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

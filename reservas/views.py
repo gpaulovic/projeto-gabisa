@@ -1,48 +1,40 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
+# reservas/views.py
+from django.shortcuts import render, get_object_or_404
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 from .models import Reserva
-from .forms import ReservaForm
-from brinquedos.models import Brinquedo
-from django.contrib.auth.decorators import login_required
+from .serializers import ReservaSerializer
 
-@login_required
-def listar_reservas(request):
-    reservas = Reserva.objects.all()
-    return render(request, 'reservas/listar_reservas.html', {'reservas': reservas})
+@api_view(['GET', 'POST'])
+def reserva_list(request):
+    if request.method == 'GET':
+        reservas = Reserva.objects.all()
+        serializer = ReservaSerializer(reservas, many=True)
+        return Response(serializer.data)
 
-@login_required
-def detalhes_reserva(request, reserva_id):
-    reserva = get_object_or_404(Reserva, pk=reserva_id)
-    return render(request, 'reservas/detalhes_reserva.html', {'reserva': reserva})
+    elif request.method == 'POST':
+        serializer = ReservaSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@login_required
-def criar_reserva(request):
-    if request.method == 'POST':
-        form = ReservaForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Reserva criada com sucesso.')
-            return redirect('reservas:listar_reservas')
-    else:
-        form = ReservaForm()
-    return render(request, 'reservas/criar_reserva.html', {'form': form})
+@api_view(['GET', 'PUT', 'DELETE'])
+def reserva_detail(request, pk):
+    reserva = get_object_or_404(Reserva, pk=pk)
 
-@login_required
-def editar_reserva(request, reserva_id):
-    reserva = get_object_or_404(Reserva, pk=reserva_id)
-    if request.method == 'POST':
-        form = ReservaForm(request.POST, instance=reserva)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Reserva editada com sucesso.')
-            return redirect('reservas:listar_reservas')
-    else:
-        form = ReservaForm(instance=reserva)
-    return render(request, 'reservas/editar_reserva.html', {'form': form, 'reserva': reserva})
+    if request.method == 'GET':
+        serializer = ReservaSerializer(reserva)
+        return Response(serializer.data)
 
-@login_required
-def excluir_reserva(request, reserva_id):
-    reserva = get_object_or_404(Reserva, pk=reserva_id)
-    reserva.delete()
-    messages.success(request, 'Reserva excluída com sucesso.')
-    return redirect('reservas:listar_reservas')
+    elif request.method == 'PUT':
+        serializer = ReservaSerializer(reserva, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        reserva.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
