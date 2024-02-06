@@ -1,69 +1,44 @@
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+from django.shortcuts import get_object_or_404  # Adicione esta linha
 from .models import Cliente
-from .forms import ClienteForm
 
-class ClienteModelTest(TestCase):
+class ClienteAPITestCase(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(
-            nome='Teste Nome',
-            telefone='123456789',
-            endereco='Endereço de Teste',
-            cpf='123.456.789-09',
-        )
+        self.cliente = Cliente.objects.create(nome='Cliente de Teste', telefone='123456789', endereco='Rua Teste', cpf='12345678901')
+        self.client = APIClient()
 
-    def test_cliente_str(self):
-        self.assertEqual(str(self.cliente), 'Teste Nome')
+    def test_listar_clientes(self):
+        url = reverse('clientes:cliente_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
 
-class ClienteFormTest(TestCase):
-    def test_criar_cliente_form_valid(self):
-        form_data = {
-            'nome': 'Teste Nome',
-            'telefone': '123456789',
-            'endereco': 'Endereço de Teste',
-            'cpf': '123.456.789-09',
-        }
-        form = ClienteForm(data=form_data)
-        self.assertTrue(form.is_valid())
+    def test_detalhes_cliente(self):
+        url = reverse('clientes:cliente_detail', args=[self.cliente.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['nome'], 'Cliente de Teste')
 
-    def test_criar_cliente_form_invalid(self):
-        form_data = {
-            'nome': 'Teste Nome',
-            'telefone': '123456789',
-            'endereco': 'Endereço de Teste',
-            'cpf': '123456789',  # CPF inválido
-        }
-        form = ClienteForm(data=form_data)
-        self.assertFalse(form.is_valid())
+    def test_criar_cliente(self):
+        url = reverse('clientes:cliente_list')
+        data = {'nome': 'Novo Cliente', 'telefone': '987654321', 'endereco': 'Rua Nova', 'cpf': '10987654321'}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Cliente.objects.count(), 2)
 
-class ClienteViewsTest(TestCase):
-    def setUp(self):
-        self.cliente = Cliente.objects.create(
-            nome='Teste Nome',
-            telefone='123456789',
-            endereco='Endereço de Teste',
-            cpf='123.456.789-09',
-        )
+    def test_atualizar_cliente(self):
+        url = reverse('clientes:cliente_detail', args=[self.cliente.id])
+        data = {'nome': 'Cliente Atualizado', 'telefone': '987654321', 'endereco': 'Rua Atualizada', 'cpf': '12345678901'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.cliente.refresh_from_db()
+        self.assertEqual(self.cliente.nome, 'Cliente Atualizado')
 
-    def test_listar_clientes_view(self):
-        response = self.client.get(reverse('clientes:listar_clientes'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Teste Nome')
-
-    def test_detalhes_cliente_view(self):
-        response = self.client.get(reverse('clientes:detalhes_cliente', args=[self.cliente.id]))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Teste Nome')
-
-    def test_criar_cliente_view(self):
-        response = self.client.post(reverse('clientes:criar_cliente'), {
-            'nome': 'Novo Cliente',
-            'telefone': '987654321',
-            'endereco': 'Novo Endereço',
-            'cpf': '987.654.321-00',
-        })
-        self.assertEqual(response.status_code, 302)  # Redirecionado após a criação
-        novo_cliente = Cliente.objects.get(nome='Novo Cliente')
-        self.assertEqual(novo_cliente.telefone, '987654321')
-
-    # Adicione mais testes conforme necessário, como para as views de edição e exclusão
+    def test_excluir_cliente(self):
+        url = reverse('clientes:cliente_detail', args=[self.cliente.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Cliente.objects.count(), 0)

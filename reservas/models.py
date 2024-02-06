@@ -1,5 +1,3 @@
-# reservas/models.py
-
 from django.db import models
 from django.utils import timezone
 from brinquedos.models import Brinquedo
